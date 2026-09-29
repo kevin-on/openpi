@@ -2,6 +2,8 @@ import dataclasses
 import functools
 import logging
 import platform
+import sys
+from openpi.training import checkpoint_config
 from typing import Any
 
 import etils.epath as epath
@@ -191,7 +193,13 @@ def train_step(
     return new_state, info
 
 
-def main(config: _config.TrainConfig):
+def main(config: _config.TrainConfig, *, config_args):
+    config_record = checkpoint_config.make_record(config, config_args)
+    if config.resume:
+        steps = sorted((p for p in config.checkpoint_dir.iterdir()
+                        if p.name.isdigit() and (p / "_CHECKPOINT_METADATA").exists()), key=lambda p: int(p.name))
+        if steps:
+            checkpoint_config.check_resume(config, steps[-1])
     init_logging()
     logging.info(f"Running on: {platform.node()}")
 
@@ -276,11 +284,11 @@ def main(config: _config.TrainConfig):
         batch = next(data_iter)
 
         if (step % config.save_interval == 0 and step > start_step) or step == config.num_train_steps - 1:
-            _checkpoints.save_state(checkpoint_manager, train_state, data_loader, step)
+            _checkpoints.save_state(checkpoint_manager, train_state, data_loader, step, config_record=config_record)
 
     logging.info("Waiting for checkpoint manager to finish")
     checkpoint_manager.wait_until_finished()
 
 
 if __name__ == "__main__":
-    main(_config.cli())
+    main(_config.cli(), config_args=sys.argv[1:])

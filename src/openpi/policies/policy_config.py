@@ -3,6 +3,7 @@ import os
 import pathlib
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 
 import openpi.models.model as _model
@@ -10,11 +11,12 @@ import openpi.policies.policy as _policy
 import openpi.shared.download as download
 from openpi.training import checkpoints as _checkpoints
 from openpi.training import config as _config
+from openpi.training import checkpoint_config
 import openpi.transforms as transforms
 
 
 def create_trained_policy(
-    train_config: _config.TrainConfig,
+    train_config: _config.TrainConfig | None,
     checkpoint_dir: pathlib.Path | str,
     *,
     repack_transforms: transforms.Group | None = None,
@@ -22,6 +24,7 @@ def create_trained_policy(
     default_prompt: str | None = None,
     norm_stats: dict[str, transforms.NormStats] | None = None,
     pytorch_device: str | None = None,
+    seed: int = 0,
 ) -> _policy.Policy:
     """Create a policy from a trained checkpoint.
 
@@ -44,6 +47,9 @@ def create_trained_policy(
     """
     repack_transforms = repack_transforms or transforms.Group()
     checkpoint_dir = download.maybe_download(str(checkpoint_dir))
+    if train_config is None:
+        train_config = checkpoint_config.load(checkpoint_dir)
+    train_config = checkpoint_config.with_assets(train_config, checkpoint_dir)
 
     # Check if this is a PyTorch model by looking for model.safetensors
     weight_path = os.path.join(checkpoint_dir, "model.safetensors")
@@ -74,6 +80,7 @@ def create_trained_policy(
 
     return _policy.Policy(
         model,
+        rng=jax.random.key(seed),
         transforms=[
             *repack_transforms.inputs,
             transforms.InjectDefaultPrompt(default_prompt),

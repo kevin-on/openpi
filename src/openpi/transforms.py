@@ -60,6 +60,18 @@ class Group:
 
 
 @dataclasses.dataclass(frozen=True)
+class OmitImages:
+    keys: tuple[str, ...] = ()
+
+    def __call__(self, data):
+        images, masks = dict(data["image"]), dict(data["image_mask"])
+        for key in self.keys:
+            images[key] = np.zeros_like(images[key])
+            masks[key] = np.zeros_like(masks[key], dtype=bool)
+        return {**data, "image": images, "image_mask": masks}
+
+
+@dataclasses.dataclass(frozen=True)
 class CompositeTransform(DataTransformFn):
     """A composite transform that applies a sequence of transforms in order."""
 

@@ -116,6 +116,7 @@ class ModelTransformFactory(GroupFactory):
             case _model.ModelType.PI0:
                 return _transforms.Group(
                     inputs=[
+                        _transforms.OmitImages(model_config.omit_image_keys),
                         _transforms.InjectDefaultPrompt(self.default_prompt),
                         _transforms.ResizeImages(self.image_resize, self.image_resize),
                         _transforms.TokenizePrompt(
@@ -128,6 +129,7 @@ class ModelTransformFactory(GroupFactory):
                 assert isinstance(model_config, pi0_config.Pi0Config)
                 return _transforms.Group(
                     inputs=[
+                        _transforms.OmitImages(model_config.omit_image_keys),
                         _transforms.InjectDefaultPrompt(self.default_prompt),
                         _transforms.ResizeImages(self.image_resize, self.image_resize),
                         _transforms.TokenizePrompt(
@@ -148,6 +150,7 @@ class ModelTransformFactory(GroupFactory):
                 )
                 return _transforms.Group(
                     inputs=[
+                        _transforms.OmitImages(model_config.omit_image_keys),
                         _transforms.InjectDefaultPrompt(self.default_prompt),
                         _transforms.ResizeImages(self.image_resize, self.image_resize),
                         _transforms.TokenizeFASTInputs(
@@ -1021,8 +1024,8 @@ if len({config.name for config in _CONFIGS}) != len(_CONFIGS):
 _CONFIGS_DICT = {config.name: config for config in _CONFIGS}
 
 
-def cli() -> TrainConfig:
-    return tyro.extras.overridable_config_cli({k: (k, v) for k, v in _CONFIGS_DICT.items()})
+def cli(args: Sequence[str] | None = None) -> TrainConfig:
+    return tyro.extras.overridable_config_cli({k: (k, v) for k, v in _CONFIGS_DICT.items()}, args=args)
 
 
 def get_config(

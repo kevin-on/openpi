@@ -25,6 +25,7 @@ def create_trained_policy(
     norm_stats: dict[str, transforms.NormStats] | None = None,
     pytorch_device: str | None = None,
     seed: int = 0,
+    params_dtype: jnp.dtype | None = jnp.bfloat16,
 ) -> _policy.Policy:
     """Create a policy from a trained checkpoint.
 
@@ -40,6 +41,9 @@ def create_trained_policy(
             from the checkpoint directory.
         pytorch_device: Device to use for PyTorch models (e.g., "cpu", "cuda", "cuda:0").
                       If None and is_pytorch=True, will use "cuda" if available, otherwise "cpu".
+        params_dtype: JAX checkpoint parameter dtype. Defaults to bfloat16; None preserves each
+            parameter's stored dtype, including mixed frozen bfloat16 and trainable float32 weights.
+            Does not change PyTorch loading or the model's configured computation dtype.
 
     Note:
         The function automatically detects whether the model is PyTorch-based by checking for the
@@ -60,7 +64,7 @@ def create_trained_policy(
         model = train_config.model.load_pytorch(train_config, weight_path)
         model.paligemma_with_expert.to_bfloat16_for_selected_params("bfloat16")
     else:
-        model = train_config.model.load(_model.restore_params(checkpoint_dir / "params", dtype=jnp.bfloat16))
+        model = train_config.model.load(_model.restore_params(checkpoint_dir / "params", dtype=params_dtype))
     data_config = train_config.data.create(train_config.assets_dirs, train_config.model)
     if norm_stats is None:
         # We are loading the norm stats from the checkpoint instead of the config assets dir to make sure
